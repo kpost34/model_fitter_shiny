@@ -53,7 +53,8 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
             #plot training data
             fluidRow(
               plotOutput(ns("plot_train")),
-              width="70%", height="70%"
+                # width="70%", height="70%"
+                height="400px"
             ),
             
             
@@ -64,7 +65,8 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
           ### Diagnostics plots
           tabPanel(title="Model Diagnostics",
             br(),
-            plotOutput(ns("plot_train_diag"))
+            plotOutput(ns("plot_train_diag"),
+              height="600px")
           ),
           
           ### Predictions

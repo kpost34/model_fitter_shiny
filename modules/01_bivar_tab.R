@@ -187,6 +187,9 @@ bivarServer <- function(id) {
         theme_norm
     } else if(input$rad_mod_select=="gam") {
       par(mfrow=c(2, 2))
+      par(cex.axis = 1.2)    # Axis text size
+      par(cex.lab = 1.5)     # Axis label size
+      par(cex.main = 1.5)    # Title size
       gam.check(mod_train())
       par(mfrow=c(1, 1))
     }
