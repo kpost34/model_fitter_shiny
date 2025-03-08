@@ -68,6 +68,23 @@ bivarServer <- function(id) {
     
     paste0(y_var(), "_type")
   })
+  
+  r2_train <-reactive({
+    req(mod_train)
+    
+    switch(input$rad_mod_select,
+      "lm"=summary(mod_train())[["r.squared"]] %>% 
+        round(3),
+      "pois"=1 - (mod_train()[["deviance"]]/mod_train()[["null.deviance"]]) %>%
+        round(3),
+      "gamma"=1 - (mod_train()[["deviance"]]/mod_train()[["null.deviance"]]) %>%
+        round(3),
+      "poly"=summary(mod_train())[["r.squared"]] %>%
+        round(3),
+      "gam"=summary(mod_train())[["dev.expl"]] %>%
+        round(3)
+    )
+  })
 
   
   ## Generate sample table
@@ -101,7 +118,8 @@ bivarServer <- function(id) {
                        y=y_var(),
                        forced0=input$sel_plot_train_axes,
                        col=input$sel_plot_train_color,
-                       mod=input$rad_mod_select)
+                       mod=input$rad_mod_select,
+                       r2_value=r2_train())
                        
   })
   
@@ -122,12 +140,16 @@ bivarServer <- function(id) {
   tidymod_train <- reactive({
     req(input$rad_mod_select!="none")
     
-    fit_tidymodel(type=input$rad_mod_select,
-                  df=df_mod_train(),
-                  formula_mod=form_train())
-    # fit_tidymodel(type=input$rad_mod_select,
-    #               x=x_var(), y=y_var(), df=df_mod_train(),
-    #               formula_mod=form_train())
+    #for cases where there's 0 or - values and gamma model is selected
+    result <- tryCatch({
+      fit_tidymodel(type=input$rad_mod_select,
+                    df=df_mod_train(),
+                    formula_mod=form_train())
+    }, error=function(e) {
+      NULL
+    })
+    
+    return(result)
   })
   
   #model
@@ -141,9 +163,8 @@ bivarServer <- function(id) {
   
   ## Model summary
   output$tab_mod_summ <- renderDT({
-    req(mod_train())
-    req(class(mod_train())!="character")
-    
+    req(df_mod_train(), mod_train())
+
     datatable(
       tidy(mod_train()) %>%
         mutate(across(where(is.numeric), ~signif(.x, 3))),
@@ -162,7 +183,8 @@ bivarServer <- function(id) {
       NULL
     } else if(input$rad_mod_select %in% c("lm", "pois", "gamma", "poly")) {
       autoplot(mod_train(), which = c(1:3, 5)) +
-        theme_bw()
+        theme_bw() +
+        theme_norm
     } else if(input$rad_mod_select=="gam") {
       par(mfrow=c(2, 2))
       gam.check(mod_train())
@@ -191,7 +213,8 @@ bivarServer <- function(id) {
                      y=!!sym(y_var())),
                  color=input$sel_plot_train_color) +
       labs(y=y_var()) +
-      theme_bw()
+      theme_bw() +
+      theme_norm
   })
   
   
@@ -247,8 +270,9 @@ bivarServer <- function(id) {
       geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type())), 
                  shape=16, size=3, alpha=0.7) +
       scale_color_manual(values=c("actual"="darkred", "pred"="darkblue")) +
+      labs(title=paste("Actual and predicted", y_var(), "values versus", x_var())) +
       theme_bw() +
-      labs(title=paste("Actual and predicted", y_var(), "values versus", x_var()))
+      theme_norm
   })
   
   #actual (y) vs predicted (x) plot
@@ -258,7 +282,8 @@ bivarServer <- function(id) {
       ggplot(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()))) +
       geom_point(alpha=0.5) +
       geom_abline(slope=1) +
-      theme_bw()
+      theme_bw() +
+      theme_norm
   })
   
   #residual (y) vs predicted (x) plot
@@ -268,7 +293,8 @@ bivarServer <- function(id) {
       ggplot() +
       geom_point(aes(x=!!sym(y_var_pred()), y=residual)) +
       geom_hline(yintercept=0, color="red", linetype="dashed") +
-      theme_bw()
+      theme_bw() +
+      theme_norm
   })
   
   #table of summary residual data

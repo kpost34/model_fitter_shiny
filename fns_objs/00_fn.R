@@ -137,7 +137,7 @@ prep_df <- function(df, x, y, x_name, y_name, x2=NULL, x2_name=NULL) {
 # Plotting Functions
 ## Simple scatterplot for training data
 make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
-                               mod="none") {
+                               mod="none", r2_value=NULL) {
   # Set objects
   x_var <- sym(x)
   y_var <- sym(y)
@@ -165,28 +165,44 @@ make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
         else geom_point(size=3, color=col)} +
     easy_labs() +
     theme_bw() +
-    theme(axis.title=element_text(size=14),
-          axis.text=element_text(size=13)) +
+    theme_norm +
     #axis type
     (if(x_forced0) scale_x_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA))) +
     (if(y_forced0) scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA)))
   
   x_txt <- 1.025 * layer_scales(p1)$x$range$range[1]
   y_txt <- 0.975 * layer_scales(p1)$y$range$range[2]
+  y_txt2 <- 1.025 * layer_scales(p1)$y$range$range[2]
   
+  legend_mod <- "Fitted line \u00B1 95% CI"
+  
+  r2_lab <- if(mod %in% c("lm", "poly")){
+    "R2 ="
+  } else if(mod %in% c("pois", "gamma", "gam")) {
+    "psuedo R2 ="
+  } else{NULL}
+  
+  if(mod=="gamma" & (sum(df[x] <= 0) > 0|sum(df[y] <= 0)>0)){
+    p2 <- p1 +
+      annotate('text', x=x_txt, y=y_txt, hjust=0, size=7, color="darkblue", 
+               label="Non-positive values are not allowed \n in modelling")
+  } else{
+    
   p2 <- p1 +
     #smoother
-    (if(mod=="lm") geom_smooth(method="lm", se=TRUE, color="purple")) +
+    (if(mod=="lm") geom_smooth(method="lm", se=TRUE, aes(color=legend_mod))) +
     (if(mod=="pois") geom_smooth(method="glm", method.args = list(family = "poisson"), 
-                                 se=TRUE, color="purple")) +
+                                 se=TRUE, aes(color=legend_mod))) +
     (if(mod=="gamma") geom_smooth(method = "glm", method.args = list(family = Gamma(link = "log")),  
-                                  se = TRUE, color = "purple")) +
+                                  se = TRUE, aes(color=legend_mod))) +
     (if(mod=="poly") geom_smooth(method = "lm", formula=y ~ poly(x, 2, raw=TRUE), se = TRUE, 
-                                 color = "purple")) +
-    (if(mod=="gam") geom_smooth(method = "gam", se = TRUE, color = "purple")) +
-    (if(mod=="gamma" & (sum(df[x] <= 0) > 0|sum(df[y] <= 0)>0)) 
-      annotate('text', x=x_txt, y=y_txt, hjust=0, color="purple", 
-               label="Non-positive are values not allowed"))
+                                 aes(color=legend_mod))) +
+    (if(mod=="gam") geom_smooth(method = "gam", se = TRUE, aes(color=legend_mod))) +
+    scale_color_manual(name="", values=c("purple")) +
+    #display r2/psuedo r2
+    ggtitle(label=NULL, subtitle=paste(r2_lab, r2_value))
+  }
+    
   
   
   # return(girafe(ggobj = p))
@@ -223,48 +239,6 @@ fit_tidymodel <- function(type, df, formula_mod){
 
   return(tidymod_fit)
 }
-
-
-
-# fit_tidymodel <- function(type, x, y, df, formula_mod, x2=NA){
-#   
-#   # Define model
-#   if(type %in% c("lm", "poly")) {
-#     mod <- linear_reg(mode="regression") %>%
-#       set_engine("lm") %>%
-#       translate()
-#   } else if(type=="pois") {
-#     mod <- poisson_reg() %>%
-#       set_engine("glm") %>%
-#       translate()
-#   } else if(type=="gamma") {
-#     mod <- linear_reg(mode="regression") %>%
-#       set_engine("glm", family=Gamma(link="log")) %>%
-#       translate()
-#   } else if(type=="gam") {
-#     mod <- gen_additive_mod(mode="regression") %>%
-#       set_engine("mgcv") %>%
-#       translate()
-#   }
-# 
-#   # Construct workflow
-#   if(is.na(x2)) {
-#     wf <- workflow() %>%
-#       add_model(mod, formula=formula_mod) %>%
-#       add_formula(as.formula(paste0(y, " ~ ", x)))
-#   } else if(!is.na(x2)) {
-#     wf <- workflow() %>%
-#       add_model(mod, formula=formula_mod) %>%
-#       add_formula(as.formula(paste(y, "~", x, "*", x2)))
-#     
-#   }
-#   
-#   # Fit model
-#   tidymod_fit <- wf %>%
-#     fit(data=df)
-#   
-#   return(tidymod_fit)
-# }
 
 
 

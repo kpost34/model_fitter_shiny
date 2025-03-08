@@ -1,12 +1,18 @@
 # Model Fitter Shiny App
 ## Data Setup code
 
-# Load packages and source functions
+# Load Packages, Source Functions, and Load Data====================================================
 pacman::p_load(tidyverse, janitor)
 source(here("fns_objs/00_fn.R"))
 
+data("trees")
+data("ships", package = "MASS")
 
-# Create DF vectors for UI
+set.seed(39)
+
+
+
+# Create DF vectors for UI==========================================================================
 vec_bivar_df <- c("Choose one"="",
                   "trees"="df_trees",
                   "ships"="df_ships",
@@ -35,14 +41,8 @@ vec_mod_std <- c("none"="none",
                  "generalized additive model (gam)"="gam")
 
 
-# Load data 
-data("trees")
-data("ships", package = "MASS")
 
-
-# Wrangle data
-set.seed(39)
-
+# Wrangle Data======================================================================================
 ## trees
 df_trees <- prep_df(df=trees, 
                     x=girth, 
@@ -89,4 +89,19 @@ df_mtcars <- prep_df(df=mtcars,
                      x2_name="Engine type")
 
 
-  
+
+# Create Theme for Plotting=========================================================================
+theme_norm <- theme(
+  plot.title=element_text(face="bold", size=15),
+  plot.subtitle=element_text(size=13),
+  axis.title=element_text(size=14),
+  axis.text=element_text(size=12),
+  legend.title=element_text(size=14),
+  legend.text=element_text(size=12),
+  legend.position="bottom"
+)
+
+
+
+
+

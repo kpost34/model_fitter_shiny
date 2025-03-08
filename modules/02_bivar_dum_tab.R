@@ -164,7 +164,8 @@ bivarDumServer <- function(id) {
       NULL
     } else if(input$rad_mod_select %in% c("lm", "pois", "gamma", "poly")) {
       autoplot(mod_train(), which = c(1:3, 5)) +
-        theme_bw()
+        theme_bw() +
+        theme_norm
     } else if(input$rad_mod_select=="gam") {
       par(mfrow=c(2, 2))
       gam.check(mod_train())
@@ -200,7 +201,8 @@ bivarDumServer <- function(id) {
                      shape=!!sym(x2_var())),
                  color=input$sel_plot_train_color) +
       labs(y=y_var()) +
-      theme_bw()
+      theme_bw() +
+      theme_norm
   })
   
 
@@ -256,8 +258,9 @@ bivarDumServer <- function(id) {
       geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type())), 
                  shape=16, size=3, alpha=0.7) +
       scale_color_manual(values=c("actual"="darkred", "pred"="darkblue")) +
+      labs(title=paste("Actual and predicted", y_var(), "values versus", x_var())) +
       theme_bw() +
-      labs(title=paste("Actual and predicted", y_var(), "values versus", x_var()))
+      theme_norm
   })
   
   #actual (y) vs predicted (x) plot
@@ -267,7 +270,8 @@ bivarDumServer <- function(id) {
       ggplot(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()))) +
       geom_point(alpha=0.5) +
       geom_abline(slope=1) +
-      theme_bw()
+      theme_bw() +
+      theme_norm
   })
   
   #residual (y) vs predicted (x) plot
@@ -277,7 +281,8 @@ bivarDumServer <- function(id) {
       ggplot() +
       geom_point(aes(x=!!sym(y_var_pred()), y=residual)) +
       geom_hline(yintercept=0, color="red", linetype="dashed") +
-      theme_bw()
+      theme_bw() +
+      theme_norm
   })
   
   #table of summary residual data
