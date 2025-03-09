@@ -3,7 +3,6 @@
 # UI================================================================================================
 bivarUI <- function(id) {
   build_ui(id=id, vec_df=vec_bivar_df)
-  # build_ui(id="bivar_df", vec_df=vec_bivar_df)
 }
 
 
@@ -13,6 +12,7 @@ bivarServer <- function(id) {
   moduleServer(id, function(input, output, session) {
     
   ## Create reactives
+  ### Variable labels
   var_labs <- reactive({
     switch(input$sel_ds,
       df_trees=var_labs_trees,
@@ -29,13 +29,7 @@ bivarServer <- function(id) {
       c("lwr"="lwr", "upr"="upr")
   })
   
-  #save for dummy variable version
-  # var_labs_preds <- reactive({
-  #   var_labs() %>%
-  #     c("lwr"="lwr", "upr"="upr")
-  # })
-  
-  
+
   var_labs_pred_type <- reactive({
     var_labs()[c(x_var(), y_var())] %>%
       c(set_names(str_replace_all(str_to_sentence(y_var_type()), "_", " "),
@@ -43,6 +37,7 @@ bivarServer <- function(id) {
   })
   
   
+  ### Data frames
   df_mod <- reactive({
     req(nchar(input$sel_ds) > 0)
     get(input$sel_ds) %>%
@@ -50,7 +45,6 @@ bivarServer <- function(id) {
   })
   
 
-  
   mod_split <- reactive({
     initial_split(df_mod(), prop=0.8) #later prop will be modifiable
   })
@@ -63,6 +57,8 @@ bivarServer <- function(id) {
     testing(mod_split())
   })
   
+  
+  ### Variables/column names/metric
   x_var <- reactive({
     switch(input$sel_ds,
       df_trees="girth",
@@ -103,7 +99,7 @@ bivarServer <- function(id) {
   })
   
   r2_train <-reactive({
-    req(mod_train)
+    # req(mod_train())
     
     switch(input$rad_mod_select,
       "lm"=summary(mod_train())[["r.squared"]] %>% 
@@ -153,7 +149,6 @@ bivarServer <- function(id) {
                        col=input$sel_plot_train_color,
                        mod=input$rad_mod_select,
                        r2_value=r2_train())
-                       
   })
   
   
@@ -194,7 +189,7 @@ bivarServer <- function(id) {
   })
   
   
-  ## Model summary
+  ## Model summary table
   output$tab_mod_summ <- renderDT({
     req(df_mod_train(), mod_train())
 
@@ -207,7 +202,7 @@ bivarServer <- function(id) {
   })
   
   
-  ## Model diagnostics
+  ## Model diagnostics plot
   output$plot_train_diag <- renderPlot({
     req(mod_train())
     req(class(mod_train())!="character")
@@ -233,7 +228,10 @@ bivarServer <- function(id) {
   ### Plot of test values against model
   #create reactive DF of test values and model
   df_mod_test_mod <- reactive({
-    make_pred_values(type=input$rad_mod_select, mod=mod_train(), df=df_mod_test(), x=x_var(), 
+    make_pred_values(type=input$rad_mod_select, 
+                     mod=mod_train(), 
+                     df=df_mod_test(), 
+                     x=x_var(), 
                      y=y_var())
   })
   
@@ -254,7 +252,8 @@ bivarServer <- function(id) {
                  color=input$sel_plot_train_color) +
       
       easy_labs() +
-      ggtitle(paste("Test data of", y_var(), "against", x_var(), "with fitted line \u00B1 95% PI")) +
+      ggtitle(paste("Test data of", y_var(), "against", x_var(), 
+                    "with fitted line \u00B1 95% PI")) +
       theme_bw() +
       theme_norm
   })
@@ -358,8 +357,10 @@ bivarServer <- function(id) {
       geom_abline(slope=1) +
       ggtitle(paste("Actual versus predicted values of", y_var(), 
                     "\nwith fitted 1:1 line")) +
-      labs(y=paste(str_to_sentence(y_var()), "(actual)"), 
-           x=paste(str_to_sentence(y_var()), "(predicted)")) +
+      labs(y=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
+                              "(actual)"), 
+           x=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
+                              "(predicted)")) +
       theme_bw() +
       theme_norm
   })
@@ -374,7 +375,9 @@ bivarServer <- function(id) {
       geom_point(aes(x=!!sym(y_var_pred()), y=residual)) +
       geom_hline(yintercept=0, color="red", linetype="dashed") +
       ggtitle(paste("Residuals against predicted values of", y_var())) +
-      labs(y="Residual", x=paste(str_to_sentence(y_var()), "(predicted)")) +
+      labs(y="Residual", 
+           x=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
+                   "(predicted)")) +
       theme_bw() +
       theme_norm
   })

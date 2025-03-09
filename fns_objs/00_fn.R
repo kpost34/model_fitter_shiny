@@ -183,7 +183,7 @@ make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
   if(mod=="gamma" & (sum(df[x] <= 0) > 0|sum(df[y] <= 0)>0)){
     p2 <- p1 +
       annotate('text', x=x_txt, y=y_txt, hjust=0, size=7, color="darkblue", 
-               label="Non-positive values are not allowed \n in modelling")
+               label="Non-positive values are not allowed \n in gamma regression")
   } else{
     
   p2 <- p1 +
