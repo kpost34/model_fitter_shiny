@@ -25,6 +25,11 @@ bivarServer <- function(id) {
   
   
   var_labs_pred <- reactive({
+    var_labs()[1:2] %>%
+      c("lwr"="lwr", "upr"="upr")
+  })
+  
+  var_labs_preds <- reactive({
     var_labs() %>%
       c("lwr"="lwr", "upr"="upr")
   })
@@ -228,6 +233,8 @@ bivarServer <- function(id) {
   
   #plot values--need to functionalize this
   output$plot_mod_test <- renderPlot({
+    req(mod_train())
+    
     df_mod_test_mod() %>%
       labelled::set_variable_labels(.labels=var_labs_pred()) %>%
       ggplot() +
@@ -273,7 +280,9 @@ bivarServer <- function(id) {
     max(df_mod_test()[[y_var()]]) - min(df_mod_test()[[y_var()]])
   })
   
-  output$tab_mod_test_pred <- renderDT(
+  output$tab_mod_test_pred <- renderDT({
+    req(mod_train())
+    
     datatable(
       df_mod_test_pred() %>%
         metrics(truth=y_var(), estimate=y_var_pred()) %>%
@@ -293,7 +302,7 @@ bivarServer <- function(id) {
       rownames=FALSE,
       options=list(dom="t")
     )
-  )
+  })
   
   
   ### Generate plots and table
