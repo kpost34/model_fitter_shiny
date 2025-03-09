@@ -25,15 +25,22 @@ bivarServer <- function(id) {
   
   
   var_labs_pred <- reactive({
-    var_labs()[1:2] %>%
+    var_labs()[c(x_var(), y_var())] %>%
       c("lwr"="lwr", "upr"="upr")
   })
   
-  var_labs_preds <- reactive({
-    var_labs() %>%
-      c("lwr"="lwr", "upr"="upr")
-  })
+  #save for dummy variable version
+  # var_labs_preds <- reactive({
+  #   var_labs() %>%
+  #     c("lwr"="lwr", "upr"="upr")
+  # })
   
+  
+  var_labs_pred_type <- reactive({
+    var_labs()[c(x_var(), y_var())] %>%
+      c(set_names(str_replace_all(str_to_sentence(y_var_type()), "_", " "),
+                  y_var_type()))
+  })
   
   
   df_mod <- reactive({
@@ -79,7 +86,7 @@ bivarServer <- function(id) {
   y_var_pred <- reactive({
     req(y_var())
     
-    paste0(y_var(), "_pred")
+    paste0(y_var(), "_predicted")
   })
   
   
@@ -270,7 +277,8 @@ bivarServer <- function(id) {
       pivot_longer(cols=c(y_var_actual(), y_var_pred()), 
                    names_to=y_var_type(), 
                    values_to=y_var(), 
-                   names_pattern=paste0(y_var(), "_(.*$)")) 
+                   names_pattern=paste0(y_var(), "_(.*$)")) %>%
+      relocate(!!sym(y_var_type()), .after=last_col())
   })
   
   
@@ -308,14 +316,50 @@ bivarServer <- function(id) {
   ### Generate plots and table
   #actual and predicted test values versus x
   output$plot_test_actual_pred_x <- renderPlot({
-    df_mod_test_pred_long() %>%
+    # Create DF and apply labels
+    df <- df_mod_test_pred_long() %>%
+      labelled::set_variable_labels(.labels=var_labs_pred_type()) 
+    
+    # Filter data for actual and predicted values
+    df_actual <- df %>% filter(!!sym(y_var_type())=="actual")
+    df_predicted <- df %>% filter(!!sym(y_var_type())=="predicted")
+    df_merged <- inner_join(df_actual, df_predicted, 
+                            by=x_var(),
+                            suffix=c("_actual", "_predicted"))
+    
+    # Create the plot
+    df %>%
       ggplot() +
       geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type())), 
                  shape=16, size=3, alpha=0.7) +
-      scale_color_manual(values=c("actual"="darkred", "pred"="darkblue")) +
-      labs(title=paste("Actual and predicted", y_var(), "values versus", x_var())) +
+      geom_segment(data= df_merged,
+                   aes(x=!!sym(x_var()), xend=!!sym(x_var()),
+                       y = !!sym(paste0(y_var(), "_actual")),
+                       yend=!!sym(paste0(y_var(), "_predicted"))),
+                   color="gray", linetype="dashed", size=0.5) +
+      scale_color_manual(values=c("actual"="darkred", "predicted"="darkblue")) +
+      labs(title=paste("Actual and predicted", y_var(), "values \nplotted against", x_var())) +
+      easy_labs() +
       theme_bw() +
       theme_norm
+    
+    
+    # df_mod_test_pred_long() %>%
+    #   labelled::set_variable_labels(.labels=var_labs_pred_type()) %>%
+    #   ggplot() +
+    #   geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type())), 
+    #              shape=16, size=3, alpha=0.7) +
+    #   geom_segment(data=. %>%
+    #                  filter(!!sym(y_var_type()) %in% c("actual", "predicted")),
+    #                aes(x=!!sym(x_var()), xend=!!sym(x_var()), 
+    #                    y = !!sym(y_var())[!!sym(y_var_type()) == "actual"], 
+    #                    yend = !!sym(y_var())[!!sym(y_var_type()) == "predicted"]), 
+    #                color="gray", linetype="dashed", size=0.5)
+    #   scale_color_manual(values=c("actual"="darkred", "predicted"="darkblue")) +
+    #   labs(title=paste("Actual and predicted", y_var(), "values \nplotted against", x_var())) +
+    #   easy_labs() +
+    #   theme_bw() +
+    #   theme_norm
   })
   
   #actual (y) vs predicted (x) plot
