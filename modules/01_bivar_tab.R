@@ -13,10 +13,31 @@ bivarServer <- function(id) {
   moduleServer(id, function(input, output, session) {
     
   ## Create reactives
+  var_labs <- reactive({
+    switch(input$sel_ds,
+      df_trees=var_labs_trees,
+      df_ships=var_labs_ships,
+      df_airquality=var_labs_airquality,
+      df_iris=var_labs_iris,
+      df_mtcars=var_labs_mtcars
+    )
+  })
+  
+  
+  var_labs_pred <- reactive({
+    var_labs() %>%
+      c("lwr"="lwr", "upr"="upr")
+  })
+  
+  
+  
   df_mod <- reactive({
     req(nchar(input$sel_ds) > 0)
-    get(input$sel_ds) 
+    get(input$sel_ds) %>%
+      labelled::set_variable_labels(.labels=var_labs())
   })
+  
+
   
   mod_split <- reactive({
     initial_split(df_mod(), prop=0.8) #later prop will be modifiable
@@ -200,22 +221,26 @@ bivarServer <- function(id) {
   ### Plot of test values against model
   #create reactive DF of test values and model
   df_mod_test_mod <- reactive({
-    make_pred_values(type=input$rad_mod_select, mod=mod_train(), df=df_mod_test(), x=x_var())
+    make_pred_values(type=input$rad_mod_select, mod=mod_train(), df=df_mod_test(), x=x_var(), 
+                     y=y_var())
   })
   
   
   #plot values--need to functionalize this
   output$plot_mod_test <- renderPlot({
     df_mod_test_mod() %>%
+      labelled::set_variable_labels(.labels=var_labs_pred()) %>%
       ggplot() +
-      geom_line(aes(x=!!sym(x_var()), y=fit)) +
+      geom_line(aes(x=!!sym(x_var()), y=!!sym(y_var()))) +
       geom_ribbon(aes(x=!!sym(x_var()), ymin=lwr, ymax=upr),
-                  color='gray', alpha=0.3) +
+                  color='gray', alpha=0.1) +
       geom_point(data=df_mod_test(), 
                  aes(x=!!sym(x_var()),
                      y=!!sym(y_var())),
                  color=input$sel_plot_train_color) +
-      labs(y=y_var()) +
+      
+      easy_labs() +
+      ggtitle(paste("Test data of", y_var(), "against", x_var(), "with fitted line \u00B1 95% PI")) +
       theme_bw() +
       theme_norm
   })
@@ -258,7 +283,13 @@ bivarServer <- function(id) {
                               estimate),
                estimate=signif(estimate, 3)) %>%
         categorize_metric() %>%
-        select(metric, estimate, strength),
+        select(metric, estimate, strength) %>%
+        mutate(metric=case_when(
+          metric=='mae'  ~ "Mean absolute error",
+          metric=="rmse" ~ "Root mean square error",
+          metric=='rsq'  ~ "R-squared",
+          TRUE           ~ "NEEDS CATEGORY")) %>%
+        arrange(metric),
       rownames=FALSE,
       options=list(dom="t")
     )

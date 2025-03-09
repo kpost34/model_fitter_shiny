@@ -112,24 +112,31 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
 
 
 # Data wrangling function
-prep_df <- function(df, x, y, x_name, y_name, x2=NULL, x2_name=NULL) {
-  x_chr <- deparse(substitute(x))
-  y_chr <- deparse(substitute(y))
-  x2_chr <- deparse(substitute(x2))
+create_var_labs <- function(x, y, x_name, y_name, x2=NULL, x2_name=NULL) {
   
-  var_labs <- if(x2_chr!="NULL") {
-    c(x_chr=x_name, x2_chr=x2_name, y_chr=y_name)
+  var_labs <- if(!is.null(x2)) {
+    c(x_name, x2_name, y_name) %>%
+      set_names(c(x, x2, y))
   } else{
-    c(x_chr=x_name, y_chr=y_name)
+   c(x_name, y_name) %>%
+      set_names(c(x, y))
   }
 
+  return(var_labs)
+}
+
+
+prep_df <- function(df, x, y, x2=NULL) {
+  x2_chr <- deparse(substitute(x2))
+  
   df_new <- df %>%
     as_tibble() %>%
     na.omit() %>%
     clean_names() %>%
     {if(x2_chr!="NULL") mutate(., {{x2}} := as.factor({{x2}})) else .} %>%
-    select({{x}}, {{x2}}, {{y}}) %>%
-    labelled::set_variable_labels(.labels=var_labs)
+    # {if(length(var_labels)==3) mutate(., {{x2}} := as.factor({{x2}})) else .} %>%
+    select({{x}}, {{x2}}, {{y}}) #%>%
+    # labelled::set_variable_labels(.labels=var_labels)
 
   return(df_new)
 }
@@ -174,7 +181,6 @@ make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
   
   x_txt <- 1.025 * layer_scales(p1)$x$range$range[1]
   y_txt <- 0.975 * layer_scales(p1)$y$range$range[2]
-  y_txt2 <- 1.025 * layer_scales(p1)$y$range$range[2]
   
   legend_mod <- "Fitted line \u00B1 95% CI"
   
@@ -245,36 +251,38 @@ fit_tidymodel <- function(type, df, formula_mod){
 
 
 # Get predicted values
-make_pred_values <- function(type, mod, df_test, x, x2=NA) {
+make_pred_values <- function(type, mod, df_test, x, y, x2=NA) {
   df_x_range <- NULL
   
+  # Bivariate model + dummy var
   if(!is.na(x2)) {
-  
+    # Find levels of dummy var
     levels <- df_test %>%
       mutate(!!x2 := as.character(!!sym(x2))) %>%
       pull(x2) %>%
       unique()
     
+    # Iterate over levels, extract x ranges, and combine into DF
     for(lev in levels){
       rng_lev <- df_test %>%
         filter(!!sym(x2)==lev) %>%
         pull(!!sym(x)) %>%
         range() 
       
-      df_tmp <- seq(rng_lev[1], rng_lev[2], length.out=100) %>%
+      df_tmp <- seq(.975*rng_lev[1], 1.025*rng_lev[2], length.out=100) %>%
         enframe(name=NULL, value=x) %>%
         mutate(!!x2 := lev)
       
       df_x_range <- bind_rows(df_x_range, df_tmp)
       
     }
-  } else{
+  } else{ #For bivariate model
   
     # Create DF of test x range
     x_min <- min(df_test[, x])
     x_max <- max(df_test[, x])
     
-    df_x_range <- seq(x_min, x_max, length.out=100) %>%
+    df_x_range <- seq(.975*x_min, 1.025*x_max, length.out=100) %>%
       enframe(name=NULL, value=x)
   }
                              
@@ -293,66 +301,24 @@ make_pred_values <- function(type, mod, df_test, x, x2=NA) {
       pred_upr <- exp(preds$fit + z_score * preds$se.fit)
       pred_fit <- exp(preds$fit)
     } 
-
     
-    df_pred <- tibble(fit=pred_fit, lwr=pred_lwr, upr=pred_upr)
+    df_pred <- tibble(fit=pred_fit, lwr=pred_lwr, upr=pred_upr) 
     
     df_test_pred <- df_x_range %>%
-      bind_cols(df_pred)
+      bind_cols(df_pred) %>%
+      rename(!!y := "fit")
     
   # Create DF of x range, y predictions, and PIs of predictions (for LMs)
   } else if(type %in% c("lm", "poly")) {
     df_test_pred <- mod %>%
       predict(newdata=df_x_range, interval="prediction") %>%
       bind_cols(df_x_range, .) %>%
-      as_tibble()
+      as_tibble() %>%
+      rename(!!y := "fit")
   }
   
   return(df_test_pred)
 }
-
-
-# make_pred_values <- function(type, mod, df_test, x) {
-#   
-#   # Create DF of test x range
-#   x_min <- min(df_test[, x])
-#   x_max <- max(df_test[, x])
-#   
-#   df_x_range <- seq(x_min, x_max, length.out=100) %>%
-#     enframe(name=NULL, value=x)
-#                              
-#   # Conditional PIs for non-LMs
-#   if(type %in% c("pois", "gamma", "gam")) {
-#     z_score <- qnorm(0.975) #95% interval
-#     preds <- predict(mod, newdata=df_x_range, type="response", se.fit=TRUE)
-#     
-#     # The gamma & poisson functions have a log-link fn
-#     if(type=="gam"){
-#       pred_lwr <- preds$fit - z_score * preds$se.fit
-#       pred_upr <- preds$fit + z_score * preds$se.fit
-#       pred_fit <- preds$fit
-#     } else{
-#       pred_lwr <- exp(preds$fit - z_score * preds$se.fit)
-#       pred_upr <- exp(preds$fit + z_score * preds$se.fit)
-#       pred_fit <- exp(preds$fit)
-#     } 
-# 
-#     
-#     df_pred <- tibble(fit=pred_fit, lwr=pred_lwr, upr=pred_upr)
-#     
-#     df_test_pred <- df_x_range %>%
-#       bind_cols(df_pred)
-#     
-#   # Create DF of x range, y predictions, and PIs of predictions (for LMs)
-#   } else if(type %in% c("lm", "poly")) {
-#     df_test_pred <- mod %>%
-#       predict(newdata=df_x_range, interval="prediction") %>%
-#       bind_cols(df_x_range, .) %>%
-#       as_tibble()
-#   }
-#   
-#   return(df_test_pred)
-# }
 
 
 

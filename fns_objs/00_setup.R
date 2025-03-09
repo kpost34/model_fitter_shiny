@@ -43,50 +43,75 @@ vec_mod_std <- c("none"="none",
 
 
 # Wrangle Data======================================================================================
-## trees
+## Variable labels
+var_labs_trees <- create_var_labs(x="girth", 
+                                  y="volume", 
+                                  x_name="Girth (in)",
+                                  y_name="Volume (cu ft)")   
+
+
+var_labs_ships <- create_var_labs(x="service",
+                                  y="incidents",
+                                  x2="type",
+                                  x_name="Service (months)",
+                                  y_name="Volume (cu ft)",
+                                  x2_name="Type")
+
+
+var_labs_airquality <- create_var_labs(x="temp",
+                                       y="ozone",
+                                       x_name="Temperature (oF)",
+                                       y_name="Ozone (ppb)")
+
+
+var_labs_iris <- create_var_labs(x="sepal_length",
+                                 y="petal_length",
+                                 x2="species",
+                                 x_name="Sepal length (cm)",
+                                 y_name="Petal length (cm)",
+                                 x2_name="Iris species name")
+
+
+var_labs_mtcars <- create_var_labs(x="wt",
+                                   y="mpg",
+                                   x2="vs",
+                                   x_name="Car weight (1000 lb)",
+                                   y_name="Miles per (US) gallon",
+                                   x2_name="Engine type")
+
+
+## Prep DFs
+### trees
 df_trees <- prep_df(df=trees, 
                     x=girth, 
-                    y=volume, 
-                    x_name="Girth (in)",
-                    y_name="Volume (cu ft)")                          
+                    y=volume)
 
 
-## ships
+### ships
 df_ships <- prep_df(df=ships,
                     x=service,
                     y=incidents,
-                    x2=type,
-                    x_name="Service (months)",
-                    y_name="Volume (cu ft)",
-                    x2_name="Type")
+                    x2=type)
 
 
-## airquality
+### airquality
 df_airquality <- prep_df(df=airquality,
                          x=temp,
-                         y=ozone,
-                         x_name="Temperature (oF)",
-                         y_name="Ozone (ppb)")
+                         y=ozone)
 
 
-## iris
+### iris
 df_iris <- prep_df(df=iris,
                    x=sepal_length,
                    y=petal_length,
-                   x2=species,
-                   x_name="Sepal length (cm)",
-                   y_name="Petal length (cm)",
-                   x2_name="Iris species name")
+                   x2=species)
 
 
-## mtcars
+### mtcars
 df_mtcars <- prep_df(df=mtcars,
                      x=wt,
                      y=mpg,
-                     x2=vs,
-                     x_name="Car weight (1000 lb)",
-                     y_name="Miles per (US) gallon",
-                     x2_name="Engine type")
+                     x2=vs)
 
 
 
