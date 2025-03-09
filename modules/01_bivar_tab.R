@@ -343,23 +343,6 @@ bivarServer <- function(id) {
       theme_bw() +
       theme_norm
     
-    
-    # df_mod_test_pred_long() %>%
-    #   labelled::set_variable_labels(.labels=var_labs_pred_type()) %>%
-    #   ggplot() +
-    #   geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type())), 
-    #              shape=16, size=3, alpha=0.7) +
-    #   geom_segment(data=. %>%
-    #                  filter(!!sym(y_var_type()) %in% c("actual", "predicted")),
-    #                aes(x=!!sym(x_var()), xend=!!sym(x_var()), 
-    #                    y = !!sym(y_var())[!!sym(y_var_type()) == "actual"], 
-    #                    yend = !!sym(y_var())[!!sym(y_var_type()) == "predicted"]), 
-    #                color="gray", linetype="dashed", size=0.5)
-    #   scale_color_manual(values=c("actual"="darkred", "predicted"="darkblue")) +
-    #   labs(title=paste("Actual and predicted", y_var(), "values \nplotted against", x_var())) +
-    #   easy_labs() +
-    #   theme_bw() +
-    #   theme_norm
   })
   
   #actual (y) vs predicted (x) plot
@@ -367,8 +350,11 @@ bivarServer <- function(id) {
     df_mod_test_pred() %>%
       rename(!!y_var_actual():=y_var()) %>%
       ggplot(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()))) +
-      geom_point(alpha=0.5) +
+      geom_point(alpha=0.5, size=2, color=input$sel_plot_train_color) +
       geom_abline(slope=1) +
+      ggtitle(paste("Actual versus predicted values of", y_var(), 
+                    "\nwith fitted 1:1 line")) +
+      labs(y="actual", x="predicted") +
       theme_bw() +
       theme_norm
   })

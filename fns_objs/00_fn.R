@@ -94,16 +94,6 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
               column(6, DTOutput(ns("tab_mod_resid")))
             )
           )
-          # tabPanel(title="Prediction assessments",
-          #   br(),
-          #   plotOutput(ns("plot_test_actual_pred_x")),
-          #   br(),
-          #   plotOutput(ns("plot_test_actual_pred")),
-          #   br(),
-          #   plotOutput(ns("plot_test_resid_pred")),
-          #   br(),
-          #   DTOutput(ns("tab_mod_resid"))
-          # )
         )
       )
     )
