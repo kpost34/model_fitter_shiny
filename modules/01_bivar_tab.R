@@ -316,6 +316,8 @@ bivarServer <- function(id) {
   ### Generate plots and table
   #actual and predicted test values versus x
   output$plot_test_actual_pred_x <- renderPlot({
+    req(mod_train())
+    
     # Create DF and apply labels
     df <- df_mod_test_pred_long() %>%
       labelled::set_variable_labels(.labels=var_labs_pred_type()) 
@@ -347,6 +349,8 @@ bivarServer <- function(id) {
   
   #actual (y) vs predicted (x) plot
   output$plot_test_actual_pred <- renderPlot({
+    req(mod_train())
+    
     df_mod_test_pred() %>%
       rename(!!y_var_actual():=y_var()) %>%
       ggplot(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()))) +
@@ -354,24 +358,31 @@ bivarServer <- function(id) {
       geom_abline(slope=1) +
       ggtitle(paste("Actual versus predicted values of", y_var(), 
                     "\nwith fitted 1:1 line")) +
-      labs(y="actual", x="predicted") +
+      labs(y=paste(str_to_sentence(y_var()), "(actual)"), 
+           x=paste(str_to_sentence(y_var()), "(predicted)")) +
       theme_bw() +
       theme_norm
   })
   
   #residual (y) vs predicted (x) plot
   output$plot_test_resid_pred <- renderPlot({
+    req(mod_train())
+    
     df_mod_test_pred() %>%
       mutate(residual=!!sym(y_var_pred()) - !!sym(y_var())) %>%
       ggplot() +
       geom_point(aes(x=!!sym(y_var_pred()), y=residual)) +
       geom_hline(yintercept=0, color="red", linetype="dashed") +
+      ggtitle(paste("Residuals against predicted values of", y_var())) +
+      labs(y="Residual", x=paste(str_to_sentence(y_var()), "(predicted)")) +
       theme_bw() +
       theme_norm
   })
   
   #table of summary residual data
-  output$tab_mod_resid <-renderDT(
+  output$tab_mod_resid <-renderDT({
+    req(mod_train())
+    
     datatable(
       df_mod_test_pred() %>%
         generate_resid_summ(y=y_var(), y_pred=y_var_pred()), 
@@ -380,6 +391,6 @@ bivarServer <- function(id) {
       rownames=FALSE,
       options=list(dom="t")
     )
-  )
+  })
   })
 }
