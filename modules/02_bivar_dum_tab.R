@@ -23,6 +23,7 @@ bivarDumServer <- function(id) {
     )
   })
   
+  
   var_labs_pred <- reactive({
     var_labs() %>%
       c("lwr"="lwr", "upr"="upr")
@@ -36,14 +37,16 @@ bivarDumServer <- function(id) {
     
     
   ### Data frames
+  #full dataset
   df_mod <- reactive({
     req(nchar(input$sel_ds) > 0)
     get(input$sel_ds) %>%
       labelled::set_variable_labels(.labels=var_labs())
   })
   
+  #split into train/test
   mod_split <- reactive({
-    initial_split(df_mod(), prop=0.8) #later prop will be modifiable
+    initial_split(df_mod(), prop=0.8) 
   })
   
   df_mod_train <- reactive({
@@ -99,11 +102,9 @@ bivarDumServer <- function(id) {
     paste0(y_var(), "_type")
   })
   
-  # NEED TO CHECK
+  
   r2_train <- reactive({
-    # req(mod_train())
 
-    #may need update...
     switch(input$rad_mod_select,
       "lm"=summary(mod_train())[["r.squared"]] %>%
         round(3),
@@ -211,14 +212,20 @@ bivarDumServer <- function(id) {
     req(mod_train())
     req(class(mod_train())!="character")
     
+    #no plot if "none" selected
     if(input$rad_mod_select=="none"){
       NULL
+    #autoplot if all models but gam selected
     } else if(input$rad_mod_select %in% c("lm", "pois", "gamma", "poly")) {
       autoplot(mod_train(), which = c(1:3, 5)) +
         theme_bw() +
         theme_norm
+    #use gam.check() output if gam selected
     } else if(input$rad_mod_select=="gam") {
       par(mfrow=c(2, 2))
+      par(cex.axis = 1.2)    #axis text size
+      par(cex.lab = 1.5)     #axis label size
+      par(cex.main = 1.5)    #title size
       gam.check(mod_train())
       par(mfrow=c(1, 1))
     }
@@ -238,7 +245,7 @@ bivarDumServer <- function(id) {
   })
   
   
-  #plot values--need to functionalize this
+  #plot values
   output$plot_mod_test <- renderPlot({
     req(mod_train())
     
@@ -270,7 +277,6 @@ bivarDumServer <- function(id) {
       predict(new_data=df_mod_test()) %>%
       bind_cols(df_mod_test()) %>%
       select(all_of(c(x_var(), x2_var(), y_var())), !!y_var_pred() := ".pred")
-      # select(all_of(c(x_var(), y_var())), !!y_var_pred() := ".pred")
   })
   
   #pivot to long version
@@ -291,6 +297,7 @@ bivarDumServer <- function(id) {
     max(df_mod_test()[[y_var()]]) - min(df_mod_test()[[y_var()]])
   })
   
+  #create table
   output$tab_mod_test_pred <- renderDT({
     req(mod_train())
     
@@ -353,7 +360,6 @@ bivarDumServer <- function(id) {
             legend.box.spacing = unit(0.05, "cm")) +
       guides(color=guide_legend(nrow=1),
              shape=guide_legend(nrow=1))
-    
   })
   
   #actual (y) vs predicted (x) plot
@@ -363,11 +369,9 @@ bivarDumServer <- function(id) {
     df_mod_test_pred() %>%
       rename(!!y_var_actual():=y_var()) %>%
       ggplot() +
-      # ggplot(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()))) +
       geom_point(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()),
                      shape=!!sym(x2_var())),
                 alpha=0.5, size=2, color=input$sel_plot_train_color) +
-      # geom_point(alpha=0.5, size=2, color=input$sel_plot_train_color) +
       geom_abline(slope=1) +
       ggtitle(paste("Actual versus predicted values of", 
                     str_remove_all(y_var(), "_"),
@@ -379,7 +383,6 @@ bivarDumServer <- function(id) {
       easy_labs() +
       theme_bw() +
       theme_norm
-
   })
   
   #residual (y) vs predicted (x) plot
