@@ -254,8 +254,9 @@ bivarDumServer <- function(id) {
                      shape=!!sym(x2_var())),
                  color=input$sel_plot_train_color) +
       easy_labs() +
-            ggtitle(paste("Test data of", y_var(), "against", x_var(), 
-                          "with fitted line \u00B1 95% PI")) +
+      ggtitle(paste("Test data of", str_remove_all(y_var(), "_"), 
+                    "against", str_remove_all(x_var(), "_"),
+                    "with fitted line \u00B1 95% PI")) +
       theme_bw() +
       theme_norm
   })
@@ -334,28 +335,25 @@ bivarDumServer <- function(id) {
     # Create the plot
     df %>%
       ggplot() +
-      geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type())), 
-                 shape=16, size=3, alpha=0.7) +
+      geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type()),
+                     shape=!!sym(x2_var())), size=3, alpha=0.7) +
       geom_segment(data= df_merged,
                    aes(x=!!sym(x_var()), xend=!!sym(x_var()),
                        y = !!sym(paste0(y_var(), "_actual")),
                        yend=!!sym(paste0(y_var(), "_predicted"))),
                    color="gray", linetype="dashed", size=0.5) +
       scale_color_manual(values=c("actual"="darkred", "predicted"="darkblue")) +
-      labs(title=paste("Actual and predicted", y_var(), "values \nplotted against", x_var())) +
+      labs(title=paste("Actual and predicted", str_remove_all(y_var(), "_"), 
+                       "values \nplotted against", str_remove_all(x_var(), "_"))) +
       easy_labs() +
       theme_bw() +
-      theme_norm
+      theme_norm +
+      theme(legend.box="vertical",
+            legend.spacing=unit(0.05, "cm"),
+            legend.box.spacing = unit(0.05, "cm")) +
+      guides(color=guide_legend(nrow=1),
+             shape=guide_legend(nrow=1))
     
-    
-    # df_mod_test_pred_long() %>%
-    #   ggplot() +
-    #   geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type())), 
-    #              shape=16, size=3, alpha=0.7) +
-    #   scale_color_manual(values=c("actual"="darkred", "pred"="darkblue")) +
-    #   labs(title=paste("Actual and predicted", y_var(), "values versus", x_var())) +
-    #   theme_bw() +
-    #   theme_norm
   })
   
   #actual (y) vs predicted (x) plot
@@ -364,17 +362,24 @@ bivarDumServer <- function(id) {
     
     df_mod_test_pred() %>%
       rename(!!y_var_actual():=y_var()) %>%
-      ggplot(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()))) +
-      geom_point(alpha=0.5, size=2, color=input$sel_plot_train_color) +
+      ggplot() +
+      # ggplot(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()))) +
+      geom_point(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()),
+                     shape=!!sym(x2_var())),
+                alpha=0.5, size=2, color=input$sel_plot_train_color) +
+      # geom_point(alpha=0.5, size=2, color=input$sel_plot_train_color) +
       geom_abline(slope=1) +
-      ggtitle(paste("Actual versus predicted values of", y_var(), 
+      ggtitle(paste("Actual versus predicted values of", 
+                    str_remove_all(y_var(), "_"),
                     "\nwith fitted 1:1 line")) +
       labs(y=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
                               "(actual)"), 
            x=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
                               "(predicted)")) +
+      easy_labs() +
       theme_bw() +
       theme_norm
+
   })
   
   #residual (y) vs predicted (x) plot
@@ -386,7 +391,8 @@ bivarDumServer <- function(id) {
       ggplot() +
       geom_point(aes(x=!!sym(y_var_pred()), y=residual)) +
       geom_hline(yintercept=0, color="red", linetype="dashed") +
-      ggtitle(paste("Residuals against predicted values of", y_var())) +
+      ggtitle(paste("Residuals against predicted values of", 
+                    str_remove_all(y_var(), "_"))) +
       labs(y="Residual", 
            x=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
                    "(predicted)")) +

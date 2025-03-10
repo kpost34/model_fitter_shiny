@@ -252,7 +252,9 @@ bivarServer <- function(id) {
                  color=input$sel_plot_train_color) +
       
       easy_labs() +
-      ggtitle(paste("Test data of", y_var(), "against", x_var(), 
+      ggtitle(paste("Test data of", 
+                    str_remove_all(y_var(), "_"),
+                    "against", str_remove_all(x_var(), "_"), 
                     "with fitted line \u00B1 95% PI")) +
       theme_bw() +
       theme_norm
@@ -339,7 +341,10 @@ bivarServer <- function(id) {
                        yend=!!sym(paste0(y_var(), "_predicted"))),
                    color="gray", linetype="dashed", size=0.5) +
       scale_color_manual(values=c("actual"="darkred", "predicted"="darkblue")) +
-      labs(title=paste("Actual and predicted", y_var(), "values \nplotted against", x_var())) +
+      labs(title=paste("Actual and predicted", 
+                       str_remove_all(y_var(), "_"), 
+                       "values \nplotted against", 
+                       str_remove_all(x_var(), "_"))) +
       easy_labs() +
       theme_bw() +
       theme_norm
@@ -355,7 +360,8 @@ bivarServer <- function(id) {
       ggplot(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()))) +
       geom_point(alpha=0.5, size=2, color=input$sel_plot_train_color) +
       geom_abline(slope=1) +
-      ggtitle(paste("Actual versus predicted values of", y_var(), 
+      ggtitle(paste("Actual versus predicted values of", 
+                    str_remove_all(y_var(), "_"), 
                     "\nwith fitted 1:1 line")) +
       labs(y=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
                               "(actual)"), 
@@ -374,7 +380,8 @@ bivarServer <- function(id) {
       ggplot() +
       geom_point(aes(x=!!sym(y_var_pred()), y=residual)) +
       geom_hline(yintercept=0, color="red", linetype="dashed") +
-      ggtitle(paste("Residuals against predicted values of", y_var())) +
+      ggtitle(paste("Residuals against predicted values of", 
+                    str_remove_all(y_var(), "_"))) +
       labs(y="Residual", 
            x=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
                    "(predicted)")) +
