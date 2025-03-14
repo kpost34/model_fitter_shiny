@@ -13,17 +13,17 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
   tagList(
     sidebarLayout(
       sidebarPanel(width=3,
-        ## Select dataset
+        # Select dataset
         selectInput(ns("sel_ds"), "Select dataset", 
                     choices = vec_df
         ),
         
         
-        ## Show data sample
+        # Show data sample
         checkboxInput(ns("chk_ds"), "Show data sample"),
         
         
-        ## Plot training data
+        # Plot training data
         #set axes
         selectInput(ns("sel_plot_train_axes"),
                   label="Select lower limits of axes",
@@ -40,10 +40,10 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
                      selected="none")
       ),
       mainPanel(width=9,
-        ## Create tabs within panel
+        # Create tabs within panel
         tabsetPanel(id=ns("tabset_output"), selected="Training Data", type="tabs",
                     
-          ### Training data/modelling output
+          ## Training data/modelling output
           tabPanel(title="Training Data",
             br(),
                 
@@ -53,7 +53,6 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
             #plot training data
             fluidRow(
               plotOutput(ns("plot_train")),
-                # width="70%", height="70%"
                 height="400px"
             ),
             
@@ -62,14 +61,14 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
             DTOutput(ns("tab_mod_summ"))
           ),
           
-          ### Diagnostics plots
+          ## Diagnostics plots
           tabPanel(title="Model Diagnostics",
             br(),
             plotOutput(ns("plot_train_diag"),
               height="600px")
           ),
           
-          ### Predictions
+          ## Predictions
           tabPanel(title="Predictions",
             br(),
             fluidRow(
@@ -79,7 +78,7 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
             DTOutput(ns("tab_mod_test_pred"))
           ),
           
-          ### Prediction assessments
+          ## Prediction assessments
           tabPanel(title="Prediction assessments",
             br(),
             fluidRow(
@@ -102,6 +101,7 @@ build_ui <- function(id, vec_df, vec_col=vec_col_std, vec_axes=vec_axes_std, vec
 
 
 # Data wrangling function
+## Create variable labels
 create_var_labs <- function(x, y, x_name, y_name, x2=NULL, x2_name=NULL) {
   
   var_labs <- if(!is.null(x2)) {
@@ -116,6 +116,7 @@ create_var_labs <- function(x, y, x_name, y_name, x2=NULL, x2_name=NULL) {
 }
 
 
+## Perform initial data cleaning
 prep_df <- function(df, x, y, x2=NULL) {
   x2_chr <- deparse(substitute(x2))
   
@@ -124,17 +125,15 @@ prep_df <- function(df, x, y, x2=NULL) {
     na.omit() %>%
     clean_names() %>%
     {if(x2_chr!="NULL") mutate(., {{x2}} := as.factor({{x2}})) else .} %>%
-    # {if(length(var_labels)==3) mutate(., {{x2}} := as.factor({{x2}})) else .} %>%
-    select({{x}}, {{x2}}, {{y}}) #%>%
-    # labelled::set_variable_labels(.labels=var_labels)
+    select({{x}}, {{x2}}, {{y}}) 
 
   return(df_new)
 }
 
 
 
-# Plotting Functions
-## Simple scatterplot for training data
+# Plotting Functions (for training and test data)
+## Scatterplot w/optional smoother for training data
 make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
                                mod="none", r2_value=NULL) {
   # Set objects
@@ -158,6 +157,7 @@ make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
   
   
   # Make plot
+  ## Initial plot without smoother
   p1 <- df %>%
     ggplot(aes(x=!!x_var, y=!!y_var, shape=!!x2_var)) +
     {if(is.na(x2)) geom_point(shape=21, size=3, fill=col)
@@ -169,6 +169,7 @@ make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
     (if(x_forced0) scale_x_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA))) +
     (if(y_forced0) scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA)))
   
+  ## Create plotting objects
   x_txt <- 1.025 * layer_scales(p1)$x$range$range[1]
   y_txt <- 0.975 * layer_scales(p1)$y$range$range[2]
   
@@ -180,12 +181,14 @@ make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
     "psuedo R2 ="
   } else{NULL}
   
+  ## Add annotation
   if(mod=="gamma" & (sum(df[x] <= 0) > 0|sum(df[y] <= 0)>0)){
     p2 <- p1 +
       annotate('text', x=x_txt, y=y_txt, hjust=0, size=7, color="darkblue", 
                label="Non-positive values are not allowed \n in gamma regression")
   } else{
-    
+  
+  ## Add smoother
   p2 <- p1 +
     #smoother
     (if(mod=="lm") geom_smooth(method="lm", se=TRUE, aes(color=legend_mod))) +
@@ -201,10 +204,44 @@ make_scatter_train <- function(df, x, y, x2=NA, forced0="none", col="black",
     ggtitle(label=NULL, subtitle=paste(r2_lab, r2_value))
   }
     
-  
-  
-  # return(girafe(ggobj = p))
+  ## Return plot
   return(p2)
+}
+
+
+## Scatterplot of test data with fitted model
+make_scatter_test <- function(df, df2, var_labs, x, y, x2=NULL, col){
+
+# Conditional logic to add geoms based on x2
+  if (!is.null(x2)) {
+    geom_layers <- list(
+      geom_line(aes(x=!!sym(x), y=!!sym(y), group=!!sym(x2))),
+      geom_ribbon(aes(x=!!sym(x), ymin=lwr, ymax=upr, group=!!sym(x2)), color='gray', alpha=0.1),
+      geom_point(data=df2, aes(x=!!sym(x), y=!!sym(y), shape=!!sym(x2)), color=col)
+    )
+  } else {
+    geom_layers <- list(
+      geom_line(aes(x=!!sym(x), y=!!sym(y))),
+      geom_ribbon(aes(x=!!sym(x), ymin=lwr, ymax=upr), color='gray', alpha=0.1),
+      geom_point(data=df2, aes(x=!!sym(x), y=!!sym(y)), color=col)
+    )
+  }
+  
+  # Construct the ggplot
+  p <- df %>%
+    labelled::set_variable_labels(.labels=var_labs) %>%
+    ggplot() +
+    #conditional geom layers
+    geom_layers +  
+    easy_labs() +
+    ggtitle(paste("Test data of", 
+                  str_replace_all(y, "_", " "),
+                  "plotted against", str_replace_all(x, "_", " "), 
+                  "with fitted line \u00B1 95% PI")) +
+    theme_bw() +
+    theme_norm
+  
+  return(p)
 }
 
 
@@ -246,13 +283,13 @@ make_pred_values <- function(type, mod, df_test, x, y, x2=NA) {
   
   # Bivariate model + dummy var
   if(!is.na(x2)) {
-    # Find levels of dummy var
+    ## Find levels of dummy var
     levels <- df_test %>%
       mutate(!!x2 := as.character(!!sym(x2))) %>%
       pull(x2) %>%
       unique()
     
-    # Iterate over levels, extract x ranges, and combine into DF
+    ## Iterate over levels, extract x ranges, and combine into DF
     for(lev in levels){
       rng_lev <- df_test %>%
         filter(!!sym(x2)==lev) %>%
@@ -266,9 +303,10 @@ make_pred_values <- function(type, mod, df_test, x, y, x2=NA) {
       df_x_range <- bind_rows(df_x_range, df_tmp)
       
     }
-  } else{ #For bivariate model
+  # Bivariate model
+  } else{ 
   
-    # Create DF of test x range
+    ## Create DF of test x range
     x_min <- min(df_test[, x])
     x_max <- max(df_test[, x])
     
@@ -312,7 +350,40 @@ make_pred_values <- function(type, mod, df_test, x, y, x2=NA) {
 
 
 
-# Assess strength of metrics when testng model
+# Wrangling predicted/actual test values
+## Combine test data with predictions
+combine_test_pred_values <- function(tidymod, df, x, y, x2=NULL){
+  y_pred <- paste0(y, "_predicted")
+  
+  df <- tidymod %>%
+    predict(new_data=df) %>%
+    bind_cols(df) %>%
+    select(all_of(c(x, y, x2)), !!y_pred := ".pred")
+  
+  return(df)
+}
+
+
+## Pivot to long version
+pivot_test_pred_long <- function(df, y){
+  y_pred <- paste0(y, "_predicted")
+  y_actual <- paste0(y, "_actual")
+  y_type <- paste0(y, "_type")
+  
+  df1 <- df %>%
+    rename(!!y_actual := y) %>%
+    pivot_longer(cols=c(y_actual, y_pred), 
+                 names_to=y_type, 
+                 values_to=y, 
+                 names_pattern=paste0(y, "_(.*$)"))%>%
+    relocate(!!sym(y_type), .after=last_col())
+  
+  return(df1)
+}
+
+
+# Reporting metrics on tested model
+## Assess strength of metrics when testng model
 categorize_metric <- function(df){
   df %>%
     mutate(
@@ -328,13 +399,41 @@ categorize_metric <- function(df){
         metric=="rmse" & rel_est > 20              ~ "low"
       )
     ) -> df1
+  
+  return(df1)
+}
+
+
+## Generate metrics table
+generate_pred_metrics <- function(df, y, y_range){
+  y_pred <- paste0(y, "_predicted")
+  
+  df1 <- df %>%
+    metrics(truth=y, estimate=y_pred) %>%
+    rename(metric=".metric", estimate=".estimate") %>%
+    mutate(rel_est=ifelse(metric %in% c("rmse", "rsq"),
+                          (estimate/y_range) * 100,
+                          estimate),
+           estimate=signif(estimate, 3)) %>%
+    categorize_metric() %>%
+    select(metric, estimate, strength) %>%
+    mutate(metric=case_when(
+      metric=='mae'  ~ "Mean absolute error",
+      metric=="rmse" ~ "Root mean square error",
+      metric=='rsq'  ~ "R-squared",
+      TRUE           ~ "NEEDS CATEGORY")) %>%
+    arrange(metric)
+  
   return(df1)
 }
 
 
 
 # Generate table of residuals
-generate_resid_summ <- function(df, y, y_pred) {
+generate_resid_summ <- function(df, y) {
+  y_pred <- paste0(y, "_predicted")
+  
+  # Calculate kurtosis
   df %>%
     mutate(resid=!!sym(y_pred)-!!sym(y),
            resid_mean=mean(resid),
@@ -346,7 +445,7 @@ generate_resid_summ <- function(df, y, y_pred) {
     distinct() %>%
     pull(kurtosis) -> kurtosis
   
-  
+  # Calculate residual metrics
   df %>%
     mutate(resid=!!sym(y_pred)-!!sym(y)) %>%
     reframe(across(resid, list(min=min, 
@@ -362,6 +461,115 @@ generate_resid_summ <- function(df, y, y_pred) {
   
   return(df_resid_summ)
 }
+
+
+
+# Prediction Assessment Plotting Functions
+## Plot actual and predicted test values versus x
+plot_actual_pred_y_vs_x <- function(df, var_labs, x, y, user_theme=theme_norm, 
+                                    x2=NULL){
+  
+  # Create variants of y as objects
+  y_type <- paste0(y, "_type")
+  y_actual <- paste0(y, "_actual")
+  y_pred <- paste0(y, "_predicted")
+  
+  # Create DF and apply labels
+  df1 <- df %>%
+    labelled::set_variable_labels(.labels=var_labs) 
+  
+  # Filter data for actual and predicted values
+  df_actual <- df1 %>% filter(!!sym(y_type)=="actual")
+  df_predicted <- df1 %>% filter(!!sym(y_type)=="predicted")
+  df_merged <- inner_join(df_actual, df_predicted, 
+                          by=c(x, x2),
+                          suffix=c("_actual", "_predicted"))
+    
+  # Create the plot
+  p <- df1 %>%
+    ggplot() +
+    {if(!is.null(x2)) geom_point(aes(x=!!sym(x), y=!!sym(y), color=!!sym(y_type),
+                   shape=!!sym(x2)), size=3, alpha=0.7)
+      else geom_point(aes(x=!!sym(x), y=!!sym(y), color=!!sym(y_type)), 
+                      shape=16, size=3, alpha=0.7)} +
+    geom_segment(data= df_merged,
+                 aes(x=!!sym(x), xend=!!sym(x),
+                     y = !!sym(y_actual),
+                     yend=!!sym(y_pred)),
+                 color="gray", linetype="dashed", size=0.5) +
+    scale_color_manual(values=c("actual"="darkred", "predicted"="darkblue")) +
+    labs(title=paste("Actual and predicted", str_replace_all(y, "_", " "), 
+                     "values \nplotted against", str_replace_all(x, "_", " "))) +
+    easy_labs() +
+    theme_bw() +
+    user_theme +
+    theme(legend.box="vertical",
+          legend.spacing=unit(0.05, "cm"),
+          legend.box.spacing = unit(0.05, "cm")) +
+    guides(color=guide_legend(nrow=1),
+           shape=guide_legend(nrow=1))
+  
+  return(p)
+}
+
+
+## Plot actual (y) vs predicted (x) values
+plot_actual_vs_pred_y <- function(df, y, col, x2=NULL, user_theme=theme_norm){
+  # Create objects for predicted and actual y values
+  y_actual <- paste0(y, "_actual")
+  y_pred <- paste0(y, "_predicted")
+  
+  # Create the plot
+  p <- df %>%
+    rename(!!y_actual:=y) %>%
+    ggplot() +
+    {if(!is.null(x2)) geom_point(aes(x=!!sym(y_pred), y=!!sym(y_actual),
+                               shape=!!sym(x2)), alpha=0.5, size=2, color=col)
+      else geom_point(aes(x=!!sym(y_pred), y=!!sym(y_actual)),
+                      alpha=0.5, size=2, color=col)} +
+    geom_abline(slope=1) +
+    ggtitle(paste("Actual versus predicted values of", 
+                  str_replace_all(y, "_", " "),
+                  "\nwith fitted 1:1 line")) +
+    labs(y=paste(str_replace_all(str_to_sentence(y), "_", " "), 
+                                 "(actual)"), 
+         x=paste(str_replace_all(str_to_sentence(y), "_", " "), 
+                                "(predicted)")) +
+    easy_labs() +
+    theme_bw() +
+    user_theme
+  
+  return(p)
+}
+
+
+## Plot residuals (y) vs predicted values (x) 
+plot_resids_vs_pred_y <- function(df, y, user_theme=theme_norm){
+  y_pred <- paste0(y, "_predicted")
+  
+  p <- df %>%
+    mutate(residual=!!sym(y_pred) - !!sym(y)) %>%
+    ggplot() +
+    geom_point(aes(x=!!sym(y_pred), y=residual)) +
+    geom_hline(yintercept=0, color="red", linetype="dashed") +
+    ggtitle(paste("Residuals against predicted values of", 
+                  str_replace_all(y, "_", " "))) +
+    labs(y="Residual", 
+         x=paste(str_replace_all(str_to_sentence(y), "_", " "), 
+                 "(predicted)")) +
+    theme_bw() +
+    user_theme
+  
+  return(p)
+}
+
+
+
+
+
+
+
+
 
 
 

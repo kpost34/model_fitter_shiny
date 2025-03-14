@@ -13,6 +13,7 @@ set.seed(39)
 
 
 # Create DF vectors for UI==========================================================================
+## Dataset names
 vec_bivar_df <- c("Choose one"="",
                   "trees"="df_trees",
                   "ships"="df_ships",
@@ -25,14 +26,20 @@ vec_bivar_dum_df <- c("Choose one"="",
                       "iris"="df_iris",
                       "mtcars"="df_mtcars")
 
+
+## Colors
 vec_col_std <- c("black", "red", "green", "blue", "steelblue", "orange", 
                  "seagreen", "brown")
 
+
+## Axis options
 vec_axes_std <- c("Unspecified"="none",
                   "Forced 0 for x-axis"="x",
                   "Forced 0 for y-axis"="y",
                   "Forced 0 for both axes"="xy")
 
+
+## Models
 vec_mod_std <- c("none"="none",
                  "linear model"="lm", 
                  "poisson regression (glm)"="pois",

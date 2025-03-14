@@ -31,8 +31,8 @@ bivarDumServer <- function(id) {
   
   var_labs_pred_type <- reactive({
     var_labs() %>%
-      c(set_names(str_replace_all(str_to_sentence(y_var_type()), "_", " "),
-                  y_var_type()))
+      c(set_names(str_replace_all(str_to_sentence(paste0(y_var(), "_type")), "_", " "),
+                  paste0(y_var(), "_type")))
   })
     
     
@@ -58,7 +58,7 @@ bivarDumServer <- function(id) {
   })
   
   
-  ### Variables/column names/metric
+  ### Variables/metric
   x_var <- reactive({
     switch(input$sel_ds,
       df_ships="service",
@@ -80,26 +80,6 @@ bivarDumServer <- function(id) {
       df_iris="petal_length",
       df_mtcars="mpg"
     )
-  })
-  
-  y_var_pred <- reactive({
-    req(y_var())
-    
-    paste0(y_var(), "_predicted")
-  })
-  
-  
-  y_var_actual <- reactive({
-    req(y_var())
-    
-    paste0(y_var(), "_actual")
-  })
-  
-  
-  y_var_type <- reactive({
-    req(y_var())
-    
-    paste0(y_var(), "_type")
   })
   
   
@@ -249,45 +229,29 @@ bivarDumServer <- function(id) {
   output$plot_mod_test <- renderPlot({
     req(mod_train())
     
-    df_mod_test_mod() %>%
-      labelled::set_variable_labels(.labels=var_labs_pred()) %>%
-      ggplot() +
-      geom_line(aes(x=!!sym(x_var()), y=!!sym(y_var()), group=!!sym(x2_var()))) +
-      geom_ribbon(aes(x=!!sym(x_var()), ymin=lwr, ymax=upr, group=!!sym(x2_var())),
-                  color='gray', alpha=0.1) +
-      geom_point(data=df_mod_test(), 
-                 aes(x=!!sym(x_var()),
-                     y=!!sym(y_var()),
-                     shape=!!sym(x2_var())),
-                 color=input$sel_plot_train_color) +
-      easy_labs() +
-      ggtitle(paste("Test data of", str_remove_all(y_var(), "_"), 
-                    "against", str_remove_all(x_var(), "_"),
-                    "with fitted line \u00B1 95% PI")) +
-      theme_bw() +
-      theme_norm
+    make_scatter_test(df=df_mod_test_mod(),
+                      df2=df_mod_test(),
+                      var_labs=var_labs_pred(),
+                      x=x_var(),
+                      y=y_var(),
+                      col=input$sel_plot_train_color,
+                      x2=x2_var())
   })
   
 
   ### Generate DFs of actual/predicted test values
   #create DF of actual and predicted test values
   df_mod_test_pred <- reactive({
-    
-    tidymod_train() %>%
-      predict(new_data=df_mod_test()) %>%
-      bind_cols(df_mod_test()) %>%
-      select(all_of(c(x_var(), x2_var(), y_var())), !!y_var_pred() := ".pred")
+    combine_test_pred_values(tidymod=tidymod_train(),
+                             df=df_mod_test(),
+                             x=x_var(),
+                             y=y_var(),
+                             x2=x2_var())
   })
   
   #pivot to long version
   df_mod_test_pred_long <- reactive({
-    df_mod_test_pred() %>%
-      rename(!!y_var_actual() := y_var()) %>%
-      pivot_longer(cols=c(y_var_actual(), y_var_pred()), 
-                   names_to=y_var_type(), 
-                   values_to=y_var(), 
-                   names_pattern=paste0(y_var(), "_(.*$)"))%>%
-      relocate(!!sym(y_var_type()), .after=last_col())
+    pivot_test_pred_long(df=df_mod_test_pred(), y=y_var())
   })
   
   
@@ -302,21 +266,9 @@ bivarDumServer <- function(id) {
     req(mod_train())
     
     datatable(
-      df_mod_test_pred() %>%
-        metrics(truth=y_var(), estimate=y_var_pred()) %>%
-        rename(metric=".metric", estimate=".estimate") %>%
-        mutate(rel_est=ifelse(metric %in% c("rmse", "rsq"),
-                              (estimate/test_y_rng()) * 100,
-                              estimate),
-               estimate=signif(estimate, 3)) %>%
-        categorize_metric() %>%
-        select(metric, estimate, strength) %>%
-        mutate(metric=case_when(
-          metric=='mae'  ~ "Mean absolute error",
-          metric=="rmse" ~ "Root mean square error",
-          metric=='rsq'  ~ "R-squared",
-          TRUE           ~ "NEEDS CATEGORY")) %>%
-        arrange(metric),
+      generate_pred_metrics(df=df_mod_test_pred(),
+                            y=y_var(),
+                            y_range=test_y_rng()),
       rownames=FALSE,
       options=list(dom="t")
     )
@@ -328,79 +280,32 @@ bivarDumServer <- function(id) {
   output$plot_test_actual_pred_x <- renderPlot({
     req(mod_train())
     
-    # Create DF and apply labels
-    df <- df_mod_test_pred_long() %>%
-      labelled::set_variable_labels(.labels=var_labs_pred_type()) 
-    
-    # Filter data for actual and predicted values
-    df_actual <- df %>% filter(!!sym(y_var_type())=="actual")
-    df_predicted <- df %>% filter(!!sym(y_var_type())=="predicted")
-    df_merged <- inner_join(df_actual, df_predicted, 
-                            by=c(x_var(), x2_var()),
-                            suffix=c("_actual", "_predicted"))
-    
-    # Create the plot
-    df %>%
-      ggplot() +
-      geom_point(aes(x=!!sym(x_var()), y=!!sym(y_var()), color=!!sym(y_var_type()),
-                     shape=!!sym(x2_var())), size=3, alpha=0.7) +
-      geom_segment(data= df_merged,
-                   aes(x=!!sym(x_var()), xend=!!sym(x_var()),
-                       y = !!sym(paste0(y_var(), "_actual")),
-                       yend=!!sym(paste0(y_var(), "_predicted"))),
-                   color="gray", linetype="dashed", size=0.5) +
-      scale_color_manual(values=c("actual"="darkred", "predicted"="darkblue")) +
-      labs(title=paste("Actual and predicted", str_remove_all(y_var(), "_"), 
-                       "values \nplotted against", str_remove_all(x_var(), "_"))) +
-      easy_labs() +
-      theme_bw() +
-      theme_norm +
-      theme(legend.box="vertical",
-            legend.spacing=unit(0.05, "cm"),
-            legend.box.spacing = unit(0.05, "cm")) +
-      guides(color=guide_legend(nrow=1),
-             shape=guide_legend(nrow=1))
+    plot_actual_pred_y_vs_x(df=df_mod_test_pred_long(),
+                            var_labs=var_labs_pred_type(),
+                            x=x_var(),
+                            y=y_var(),
+                            x2=x2_var(),
+                            user_theme=theme_norm)
   })
   
   #actual (y) vs predicted (x) plot
   output$plot_test_actual_pred <- renderPlot({
     req(mod_train())
     
-    df_mod_test_pred() %>%
-      rename(!!y_var_actual():=y_var()) %>%
-      ggplot() +
-      geom_point(aes(x=!!sym(y_var_pred()), y=!!sym(y_var_actual()),
-                     shape=!!sym(x2_var())),
-                alpha=0.5, size=2, color=input$sel_plot_train_color) +
-      geom_abline(slope=1) +
-      ggtitle(paste("Actual versus predicted values of", 
-                    str_remove_all(y_var(), "_"),
-                    "\nwith fitted 1:1 line")) +
-      labs(y=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
-                              "(actual)"), 
-           x=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
-                              "(predicted)")) +
-      easy_labs() +
-      theme_bw() +
-      theme_norm
+    plot_actual_vs_pred_y(df=df_mod_test_pred(),
+                          y=y_var(),
+                          col=input$sel_plot_train_color,
+                          x2=x2_var(),
+                          user_theme=theme_norm)
   })
   
   #residual (y) vs predicted (x) plot
   output$plot_test_resid_pred <- renderPlot({
     req(mod_train())
     
-    df_mod_test_pred() %>%
-      mutate(residual=!!sym(y_var_pred()) - !!sym(y_var())) %>%
-      ggplot() +
-      geom_point(aes(x=!!sym(y_var_pred()), y=residual)) +
-      geom_hline(yintercept=0, color="red", linetype="dashed") +
-      ggtitle(paste("Residuals against predicted values of", 
-                    str_remove_all(y_var(), "_"))) +
-      labs(y="Residual", 
-           x=paste(str_replace(str_to_sentence(y_var()), "_", " "), 
-                   "(predicted)")) +
-      theme_bw() +
-      theme_norm
+    plot_resids_vs_pred_y(df=df_mod_test_pred(),
+                          y=y_var(),
+                          user_theme=theme_norm)
   })
   
   #table of summary residual data
@@ -408,10 +313,9 @@ bivarDumServer <- function(id) {
     req(mod_train())
     
     datatable(
-      df_mod_test_pred() %>%
-        generate_resid_summ(y=y_var(), y_pred=y_var_pred()), 
-        caption = htmltools::tags$caption(style='caption-side: top; text-align: left; color:black;  
-                                          font-size:200% ;','Residual Summary Stats'),
+      generate_resid_summ(df=df_mod_test_pred(), y=y_var()), 
+      caption = htmltools::tags$caption(style='caption-side: top; text-align: left; color:black;  
+                                        font-size:200% ;','Residual Summary Stats'),
       rownames=FALSE,
       options=list(dom="t")
     )
