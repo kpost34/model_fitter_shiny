@@ -22,6 +22,7 @@ here("modules") %>%
 modelFitterApp <- function() {
   ## UI
   ui <- navbarPage(
+    theme=bslib::bs_theme(bootswatch="yeti"),
     tags$head(
       tags$style(HTML("
         hr {
@@ -43,9 +44,14 @@ modelFitterApp <- function() {
     tabPanel("Bivariate with Dummy Variable Data",
       bivarDumUI("bivar_dum_df")),
     
-    ### Multivariable
-    tabPanel("Multivariable Data",
-      multvarUI("multvar_df"))
+    ### App Info
+    tabPanel("App Info",
+      appInfoUI("app_info")),
+    
+    ### Developer Info Tab
+    tabPanel("Developer Info",
+      devInfoUI("dev_info"))
+
   )
 
   ## Server
@@ -57,8 +63,12 @@ modelFitterApp <- function() {
     ### Bivariate + Dummy
     bivarDumServer("bivar_dum_df")
     
-    ### Multivariable
-    multvarServer("multvar_df")
+    ### App Instructions
+    #placeholder
+    
+    ### Developer Info
+    #placeholder
+    
     
   }
 
@@ -67,3 +77,6 @@ shinyApp(ui, server)
 }
 
 modelFitterApp()
+
+
+
