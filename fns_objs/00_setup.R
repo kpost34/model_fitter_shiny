@@ -135,5 +135,35 @@ theme_norm <- theme(
 
 
 
+# String Objects for Application Instructions=======================================================
+## App overview
+app_overview1 <- "This app was developed as a simple way to explore and understand"
+app_overview2 <- "relationships among variables in a dataset through modelling. The"
+app_overview3 <- "app enables a user to choose one of two variable sets from multiple"
+app_overview4 <- "datasets, select various plotting options, and explore fits by"
+app_overview5 <- "different model types. Diagnostic information and performance"
+app_overview6 <- "metrics of models are presented in multiple ways."
+app_overview <- paste(app_overview1, app_overview2, app_overview3, app_overview4,
+                      app_overview5, app_overview6)
+
+
+## Notes
+app_notes1 <- "Note that if no dataset is selected, then no output will be displayed"
+app_notes2 <- "on any lower tab. If a dataset is selected but 'none' is chosen under"
+app_notes3 <- "'Choose model' in the left menu, then no output will be presented on"
+app_notes4 <- "all but the 'Training Data' tab. Finally, negative values and/or 0s"
+app_notes5 <- "are not allowed for gamma regression models, and text indicated this"
+app_notes6 <- "limitation will be presented in the 'Training Data' scatterplot."
+app_notes <- paste(app_notes1, app_notes2, app_notes3, app_notes4, app_notes5, 
+                   app_notes6)
+
+
+
+
+
+
+
+
+
 
 
