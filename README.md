@@ -10,7 +10,7 @@ programming with a modular design and a suite of custom functions improve respon
 facilitate app updates and add-ons. 
 
 ## App
-+ [Shiny for Python App](https://keithhpost.shinyapps.io/model_fitter_shiny/) 
++ [Shiny App](https://keithhpost.shinyapps.io/model_fitter_shiny/) 
 
 #### **Project Creator: Keith Post**
 + [Github Profile](https://github.com/kpost34) 
